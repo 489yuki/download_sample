@@ -6,12 +6,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 
 class DownloadSampleModel {
-
-
   Future<void> downloadVideos(
-      StreamController<double> stream,
-      List<VideoData> downloadVideoDataList,
-      ) async {
+    StreamController<double> stream, //viewModelで　returnするためのstreamController
+    List<VideoData> downloadVideoDataList,
+  ) async {
     //アプリのディレクトリのpathをここで取得
     final _directory = await getApplicationDocumentsDirectory();
     String _localPath = _directory.path;
@@ -29,23 +27,19 @@ class DownloadSampleModel {
     for (int i = 0; i < downloadVideoDataList.length; i++) {
       //urlは動画が置いてあるurl,fileNameは保存する動画のファイル名(拡張子も含める),directoryは動画を保存したdirectory名
       var _req =
-      http.Request('GET', Uri.parse(downloadVideoDataList[i].videoUrl));
+          http.Request('GET', Uri.parse(downloadVideoDataList[i].videoUrl));
       final http.StreamedResponse response =
-      await http.Client().send(_req).timeout(Duration(seconds: 10));
+          await http.Client().send(_req).timeout(Duration(seconds: 10));
       final _contentLength = response.contentLength;
-
-      late bool _isDownloaded;
-
+      //$_localPath/はダウンロードするファイルを保存する場所のpath
+      final File downloadFile =
+          File('$_localPath/videos/${downloadVideoDataList[i].videoName}');
       //i番目の動画がすでにダウンロード済かどうか確認
-      _isDownloaded =
-      await File('$_localPath/videos/${downloadVideoDataList[i].videoName}')
-          .exists();
+      final bool _isDownloaded = await downloadFile.exists();
       //ダウンロード済だった場合
       if (_isDownloaded == true &&
           //_isDownloadedだけではダウンロード済みでも前回のダウンロードが完全でなかった場合、動画として不完全な物になってしまうため、データ量で判定
-          File('$_localPath/videos/${downloadVideoDataList[i].videoName}')
-              .lengthSync() ==
-              _contentLength) {
+          downloadFile.lengthSync() == _contentLength) {
         _progress = 0;
         _progressList.add(0);
         _progressList[i] = 100;
@@ -58,16 +52,12 @@ class DownloadSampleModel {
       else {
         List<int> bytes = [];
 
-        //$_localPath/$directory/はダウンロードするファイルを保存する場所のpath
-        File file = new File(
-            '$_localPath/videos/${downloadVideoDataList[i].videoName}');
-
         //i番目のダウンロードの進捗情報を追加
         _progressList.add(0);
 
         try {
           response.stream.listen(
-                (List<int> newBytes) {
+            (List<int> newBytes) {
               bytes.addAll(newBytes);
               final downloadLength = bytes.length;
               _progressList[i] = 100 * downloadLength / _contentLength!;
@@ -78,7 +68,7 @@ class DownloadSampleModel {
               stream.sink.add(_progress);
             },
             onDone: () async {
-              await file.writeAsBytes(bytes);
+              await downloadFile.writeAsBytes(bytes);
             },
           );
         } catch (e) {
